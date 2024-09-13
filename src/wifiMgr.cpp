@@ -27,7 +27,7 @@ DNSServer dns;
 // AsyncWiFiManager wifiManager(&webServer, &dns);
 
 // #define WEBSERVER_H
-#include <AsyncElegantOTA.h>
+#include <ElegantOTA.h>
 
 
 #include <WiFi.h>
@@ -335,12 +335,12 @@ https://techtutorialsx.com/2018/09/13/esp32-arduino-web-server-receiving-data-fr
    */
 
 // wsSendTuner(au.radioCurrentStation + 1, au.radioCurrentVolume);
-// --------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 void wsSendTuner(int presetNo, int volume)
 {
     Serial.printf("wifi::wsSendTuner> Preset %d , Volume %d\n", presetNo, volume);
-    ws.printfAll_P("station_select=%d", presetNo);
-    ws.printfAll_P("volume=%d", volume);
+    ws.printfAll("station_select=%d", presetNo);
+    ws.printfAll("volume=%d", volume);
 }
 
 // --------------------------------------------------------------------------
@@ -351,11 +351,11 @@ void wsSendArtistTitle(char *Artist, char *SongTitle)
 
     if (strLen)
     {
-        ws.printfAll_P("meta_playing=%s@%s", Artist, SongTitle);
+        ws.printfAll("meta_playing=%s@%s", Artist, SongTitle);
         getCoverBMID(Artist, SongTitle);
     }
     else
-        ws.printfAll_P("meta_playing=@");
+        ws.printfAll("meta_playing=@");
 }
 
 // --------------------------------------------------------------------------
@@ -437,24 +437,11 @@ void handleConfig(AsyncWebServerRequest *request)
 //
 void handleRadioConfig(AsyncWebServerRequest *request)
 {
-    // int params = request->params();
-    request->params();
-    AsyncWebParameter *p = request->getParam(0);
-    if (p->isPost())
-    {
-        // Serial.printf("_POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
-        Serial.printf("_POST[%s]\n", p->name().c_str());
-        if (request->hasParam("config", true))
-            Serial.printf("_POST[%s] is config\n", p->name().c_str());
-        saveToSPIFFS(WIFI_SETUP_FILE, p->value());
+    AsyncWebParameter* p = request->getParam("config", true);  // true for POST
+    if (p) {
+        Serial.printf("_POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
+        saveToSPIFFS(WIFI_SETUP_FILE, p->value().c_str());
     }
-    else
-    {
-        Serial.printf("_GET[%s]: %s\n", p->name().c_str(), p->value().c_str());
-    }
-
-    // After handling the post we redirect to the config page
-    // Serial.println("handleRadioConfig> redirect");
     request->redirect("/radio.html");
 } // end of function
 
@@ -485,9 +472,8 @@ void setup_webServer()
     ws.onEvent(onWsEvent);
     webServer.addHandler(&ws);
 
-    // AsyncElegantOTA.setAuth(OTA_USER, OTA_PASS);
-    AsyncElegantOTA.begin(&webServer,OTA_USER, OTA_PASS);
-    // AsyncElegantOTA.begin(&webServer); // no credentials required
+    ElegantOTA.begin(&webServer);
+    ElegantOTA.setAuth(OTA_USER, OTA_PASS);
 
     webServer.begin();
     Serial.println("HTTP server started");
@@ -755,8 +741,7 @@ char *urlencode(char *dst, char *src)
 #include "HTTPClient.h"
 String serverName = "http://musicbrainz.org/ws/2/release/?fmt=json&limit=1&query=release:";
 //                   http://musicbrainz.org/ws/2/release/?limit=1&query=release:Welshly%20Arms%20%20/%20Legendary
-//                   http://musicbrainz.org/ws/2/release/?fmt=json%26limit=1%26query=artist:Michael%20Patrick%20Kelly%20AND%20release:Beautiful%20Madness%20
-//                  `http://musicbrainz.org/ws/2/release/?fmt=json&limit=${limit}&query=artist:${safeArtist} AND release:${safeTitle}`
+//                   http://musicbrainz.org/ws/2/release/?fmt=json%26limit=1%26query=artist:${safeArtist}%20AND%20release:${safeTitle}`
 // --------------------------------------------------------------------------
 void getCoverBMID(char *Artist, char *SongTitle)
 {
